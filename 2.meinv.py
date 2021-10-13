@@ -1,44 +1,41 @@
-import urllib.request
-import re
-import os
-import urllib
+import base64
+import threading
 
-x = 0
+import requests
+from lxml import etree
 
 
-def fetchImageByPage(page):
-    global x
-    url = "https://pic.netbian.com"
+def fetch(page):
+    # 1.分析URL规则, 第一页和第N页的区别
+    url = "https://sc.chinaz.com"
     if page == 1:
-        meinvurl = url + "/4kmeinv/index.html"
+        url += "/tupian/ribenmeinv.html"
     else:
-        meinvurl = url + "/4kmeinv/index_" + str(page) + ".html"
-
-    # 1.获取html源码
-    requesturl = urllib.request.urlopen(meinvurl)
-    requesthtml = requesturl.read().decode('gbk')
-    # 2.通过正则表达式获取image的url
-    reg = r'src="(.+?\.jpg)" alt='
-    imgreg = re.compile(reg)
-    imglist = imgreg.findall(requesthtml)
-    # 3.过滤图片url
-    for temp in range(len(imglist) - 1, -1, -1):
-        if imglist[temp].find("qqonline") >= 0:
-            imglist.pop(temp)
-    # 4.设置image保存路径
-    path = 'C:\\meinv'
-    if not os.path.isdir(path):
-        os.makedirs(path)
-    paths = path + '\\'
-    # 5.保存图片到本地
-    for imgurl in imglist:
-        localpath = '{}{}.jpg'.format(paths, x)
-        urllib.request.urlretrieve(url + imgurl, localpath)
-        print("image saved path: " + localpath)
-        x = x + 1
+        url += "/tupian/ribenmeinv_" + str(page) + ".html"
+    # 2.模拟浏览器请求
+    header = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.81 Safari/537.36"
+    }
+    # 3.发送请求
+    response = requests.get(url, headers=header).content.decode("utf-8")
+    # 4.将bytes转换成html对象
+    html = etree.HTML(response)
+    # 5.提取图片
+    original_image_list = html.xpath("//div[@id='container']/div[@class='box picblock col3']/div/a/img/@src2")
+    # 6.过滤图片地址
+    for original_image_url in original_image_list:
+        image_url = original_image_url[2:].replace("_s", "")
+        image_url = "https://" + image_url
+        # 7.下载图片
+        data = requests.get(image_url).content
+        # 将图片下载保存到电脑本地
+        with open(r"C:/meinv/" + str(base64.b64encode(image_url.encode("utf-8"))) + ".jpg", "wb") as file_object:
+            file_object.write(data)
+            print("downloaded:" + image_url)
 
 
 if __name__ == "__main__":
     pages = int(input("请输入总页数："))
     for page in range(pages):
-        fetchImageByPage(page + 1)
+        t = threading.Thread(target=fetch, args=(page + 1,))
+        t.start()
