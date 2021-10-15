@@ -29,7 +29,7 @@ def fetch(page):
         # 7.下载图片
         data = requests.get(image_url).content
         # 将图片下载保存到电脑本地
-        with open(r"C:/meinv/" + str(base64.b64encode(image_url.encode("utf-8"))) + ".jpg", "wb") as file_object:
+        with open(r"C:/meinv/" + image_url.split('/')[-1] + ".jpg", "wb") as file_object:
             file_object.write(data)
             print("downloaded:" + image_url)
 
